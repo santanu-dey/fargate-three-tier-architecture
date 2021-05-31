@@ -1,0 +1,266 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: >
+    This template deploys a sample 3-tier application using Amazon ECS on Fargate
+
+Parameters:
+  ResourceBucket:
+    Type: String
+    Description: S3 Bucket where the deployent dependent cloudformation resources are stored
+
+  ECSClusterFor3tierApp:
+    Description: ECS Cluster Name
+    Type: String
+    Default: ECSClusterFor3tierApp
+
+  ECSInstanceKeyPair:
+    Description: Key pair to be used for SSH into the bastion host
+    Type: String
+    Default: ECSInstanceKeyPair
+    # default be deleted
+
+  VpcCIDR:
+    Description: Please enter the IP range (CIDR notation) for this VPC
+    Type: String
+    Default: 10.1.0.0/16
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    MinLength: 9
+    MaxLength: 18
+    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x
+
+  Tier1Subnet1CIDR:
+    Description: Please enter the IP range (CIDR notation) for this Subnet
+    Type: String
+    Default: 10.1.1.0/24
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    MinLength: 9
+    MaxLength: 18
+    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x
+
+  Tier1Subnet2CIDR:
+    Description: Please enter the IP range (CIDR notation) for this Subnet
+    Type: String
+    Default: 10.1.2.0/24
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    MinLength: 9
+    MaxLength: 18
+    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x
+
+  Tier2Subnet1CIDR:
+    Description: Please enter the IP range (CIDR notation) for this Subnet
+    Type: String
+    Default: 10.1.3.0/24
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    MinLength: 9
+    MaxLength: 18
+    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x
+
+  Tier2Subnet2CIDR:
+    Description: Please enter the IP range (CIDR notation) for this Subnet
+    Type: String
+    Default: 10.1.4.0/24
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    MinLength: 9
+    MaxLength: 18
+    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x
+
+  Tier3Subnet1CIDR:
+    Description: Please enter the IP range (CIDR notation) for this Subnet
+    Type: String
+    Default: 10.1.5.0/24
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    MinLength: 9
+    MaxLength: 18
+    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x
+
+  Tier3Subnet2CIDR:
+    Description: Please enter the IP range (CIDR notation) for this Subnet
+    Type: String
+    Default: 10.1.6.0/24
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    MinLength: 9
+    MaxLength: 18
+    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x
+
+  WordPressDBUser:
+    AllowedPattern: "[a-zA-Z][a-zA-Z0-9]*"
+    ConstraintDescription: must be between 1 to 16 alphanumeric characters.
+    Description: The database admin account user name, between 1 to 16 alphanumeric characters.
+    MaxLength: '16'
+    MinLength: '1'
+    Type: String
+    Default: 'wpuser'
+    #Delete the default values here
+
+  WordPressDBName:
+    AllowedPattern: "[a-zA-Z][a-zA-Z0-9]*"
+    ConstraintDescription: must be between 1 to 16 alphanumeric characters.
+    Description: The database admin account user name, between 1 to 16 alphanumeric characters.
+    MaxLength: '63'
+    MinLength: '1'
+    Type: String
+    Default: 'wpdb'
+    #Delete the default values here
+
+  WordPressDBPassword:
+    AllowedPattern: "[a-zA-Z0-9]+"
+    ConstraintDescription: must be between 8 to 41 alphanumeric characters.
+    Description: The database admin account password, between 8 to 41 alphanumeric characters.
+    MaxLength: '41'
+    MinLength: '8'
+    NoEcho: 'true'
+    Type: String
+    #Delete the default values here
+
+  ResourceTag:
+    Description: This value will be used for tagging all resources in the stack
+    Type: String
+    Default: ecs3tier
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Database Configuration
+        Parameters:
+          - WordPressDBUser
+          - WordPressDBName
+          - WordPressDBPassword
+    ParameterLabels:
+      WordPressDBName:
+        default: Wordpress Database Name
+      WordPressDBUser:
+        default: Wordpress Database Username
+      DatabasePassword:
+        default: Wordpress Database Password
+
+Resources:
+
+  # IAM Roles
+  IAMRoles:
+    Type: AWS::CloudFormation::Stack
+    DeletionPolicy: Delete
+    Properties:
+      TemplateURL:  !Join ['', ['https://', !Ref 'ResourceBucket', '.s3.amazonaws.com', '/dependencies/iam-template.yaml']] 
+      Parameters: 
+        ResourceTag: !Ref ResourceTag
+      Tags:
+      - Key: resource-label
+        Value: !Ref ResourceTag
+
+  # Networking stack
+  Networking:
+    Type: AWS::CloudFormation::Stack
+    DeletionPolicy: Delete
+    Properties:
+      TemplateURL:  !Join ['', ['https://', !Ref 'ResourceBucket', '.s3.amazonaws.com', '/dependencies/networking-template.yaml']]
+      Parameters: 
+        VpcCIDR: !Ref VpcCIDR
+        Tier1Subnet1CIDR: !Ref Tier1Subnet1CIDR
+        Tier1Subnet2CIDR: !Ref Tier1Subnet2CIDR
+        Tier2Subnet1CIDR: !Ref Tier2Subnet1CIDR
+        Tier2Subnet2CIDR: !Ref Tier2Subnet2CIDR
+        Tier3Subnet1CIDR: !Ref Tier3Subnet1CIDR
+        Tier3Subnet2CIDR: !Ref Tier3Subnet2CIDR
+        ResourceTag: !Ref ResourceTag
+      Tags:
+      - Key: resource-label
+        Value: !Ref ResourceTag
+
+  # Storage stack
+  Storage:
+    Type: AWS::CloudFormation::Stack
+    DeletionPolicy: Delete
+    Properties:
+      TemplateURL:  !Join ['', ['https://', !Ref 'ResourceBucket', '.s3.amazonaws.com', '/dependencies/storage-template.yaml']]
+      Parameters: 
+        ResourceTag: !Ref ResourceTag
+        WordPressDBUser: !Ref WordPressDBUser
+        WordPressDBName: !Ref WordPressDBName
+        WordPressDBPassword: !Ref WordPressDBPassword
+        VPC: 
+          Fn::GetAtt:
+          - Networking
+          - Outputs.VPC
+        Tier2Subnet1: 
+          Fn::GetAtt:  
+          - Networking
+          - Outputs.Tier2Subnet1
+        Tier2Subnet2:
+          Fn::GetAtt:  
+          - Networking
+          - Outputs.Tier2Subnet2
+        Tier3Subnet1:
+          Fn::GetAtt:  
+          - Networking
+          - Outputs.Tier3Subnet1          
+        Tier3Subnet2:
+          Fn::GetAtt:  
+          - Networking
+          - Outputs.Tier3Subnet2
+        Tier2Subnet1CIDR: !Ref Tier2Subnet1CIDR
+        Tier2Subnet2CIDR: !Ref Tier2Subnet2CIDR
+      Tags:
+      - Key: resource-label
+        Value: !Ref ResourceTag
+
+  # ECSCluster stack
+  # ECSCluster:
+  #   Type: AWS::CloudFormation::Stack
+  #   DeletionPolicy: Delete
+  #   Properties:
+  #     TemplateURL:  !Join ['', ['https://', !Ref 'ResourceBucket', '.s3.amazonaws.com', '/dependencies/ecs-on-ec2-template.yaml']]
+  #     Parameters: 
+  #       ResourceTag: !Ref ResourceTag
+  #       ECSClusterFor3tierApp: !Ref ECSClusterFor3tierApp
+  #       ECSServiceRole: 
+  #         Fn::GetAtt: 
+  #         - IAMRoles
+  #         - Outputs.ECSServiceRole
+  #       ECSInstanceKeyPair: !Ref ECSInstanceKeyPair
+  #       VPC: 
+  #         Fn::GetAtt:
+  #         - Networking
+  #         - Outputs.VPC
+  #       VPCSecurityGroup: 
+  #         Fn::GetAtt:
+  #         - Networking
+  #         - Outputs.VPCSecurityGroup
+  #       Tier1Subnet1:
+  #         Fn::GetAtt:  
+  #         - Networking
+  #         - Outputs.Tier1Subnet1
+  #       Tier1Subnet2: 
+  #         Fn::GetAtt:  
+  #         - Networking
+  #         - Outputs.Tier1Subnet2
+  #       Tier2Subnet1: 
+  #         Fn::GetAtt:
+  #         - Networking
+  #         - Outputs.Tier2Subnet1
+  #       Tier2Subnet2: 
+  #         Fn::GetAtt:
+  #         - Networking
+  #         - Outputs.Tier2Subnet2
+  #       WordPressDBHost:
+  #         Fn::GetAtt:
+  #         - Storage
+  #         - Outputs.WordPressDBHost
+  #       WordPressDBName: !Ref WordPressDBName
+  #       WordPressDBUser: !Ref WordPressDBUser
+  #       WordPressDBPassword: !Ref WordPressDBPassword
+  #       FileSystemID:
+  #         Fn::GetAtt:
+  #         - Storage
+  #         - Outputs.FileSystemID
+  #     Tags:
+  #     - Key: resource-label
+  #       Value: !Ref ResourceTag
+
+# Outputs:
+#   ECSLoadBalancerEndPoint:
+#     Description: ALB Endpoint (http URL) to request the application. 
+#     Value:
+#       Fn::GetAtt:
+#         - ECSCluster
+#         - Outputs.ECSLoadBalancer

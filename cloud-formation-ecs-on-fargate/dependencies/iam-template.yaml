@@ -1,0 +1,48 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: >
+    This template contains IAM elements needed for the whole stack
+
+Parameters:
+
+  ResourceTag:
+    Description: This value will be used for tagging all resources in the stack
+    Type: String
+    Default: ecs3tier
+
+Resources:
+  ECSServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: ECSServiceRoleName
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: 
+              - 'ecs-tasks.amazonaws.com'
+          Action: 
+            - 'sts:AssumeRole'
+      Path: /
+      Policies:
+      - PolicyName: ecs-service
+        PolicyDocument:
+          Statement:
+          - Effect: Allow
+            Action: 
+              - 'ecr:GetAuthorizationToken'
+              - 'ecr:BatchCheckLayerAvailability'
+              - 'ecr:GetDownloadUrlForLayer'
+              - 'ecr:BatchGetImage'
+              - 'logs:CreateLogStream'
+              - 'logs:PutLogEvents'
+              - 'ecs:DescribeServices'
+              - 'ecs:UpdateService'
+              - 'cloudwatch:DescribeAlarms'
+              - 'cloudwatch:PutMetricAlarm'
+            Resource: '*'
+Outputs:
+  ECSServiceRole:
+    Value: !Ref ECSServiceRole
+    # Export: 
+    #   Name: ECSServiceRoleForECS3TierStack

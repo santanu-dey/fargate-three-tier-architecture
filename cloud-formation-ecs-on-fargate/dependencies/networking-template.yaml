@@ -1,0 +1,556 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: >
+    This template contains networking elements
+
+#------------------------------------------------------------------------------
+# Paramenters
+#------------------------------------------------------------------------------
+Parameters:
+
+  ResourceTag:
+    Description: This value will be used for tagging all resources in the stack
+    Type: String
+    Default: ecs3tier
+
+  VpcCIDR:
+    Description: Please enter the IP range (CIDR notation) for this VPC
+    Type: String
+    Default: 10.1.0.0/16
+
+  Tier1Subnet1CIDR:
+    Description: Please enter the IP range (CIDR notation) for this Subnet
+    Type: String
+    Default: 10.1.1.0/24
+
+  Tier1Subnet2CIDR:
+    Description: Please enter the IP range (CIDR notation) for this Subnet
+    Type: String
+    Default: 10.1.2.0/24
+
+  Tier2Subnet1CIDR:
+    Description: Please enter the IP range (CIDR notation) for this Subnet
+    Type: String
+    Default: 10.1.3.0/24
+
+  Tier2Subnet2CIDR:
+    Description: Please enter the IP range (CIDR notation) for this Subnet
+    Type: String
+    Default: 10.1.4.0/24
+
+  Tier3Subnet1CIDR:
+    Description: Please enter the IP range (CIDR notation) for this Subnet
+    Type: String
+    Default: 10.1.5.0/24
+
+  Tier3Subnet2CIDR:
+    Description: Please enter the IP range (CIDR notation) for this Subnet
+    Type: String
+    Default: 10.1.6.0/24
+
+  ECSInstanceKeyPair:
+    Description: Key pair to be used for SSH into the ECS instances
+    Type: String
+    Default: ECSInstanceKeyPair
+    # default be deleted
+
+Resources:
+#------------------------------------------------------------------------------
+# VPC
+#------------------------------------------------------------------------------
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCIDR
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: resource-label
+          Value: !Ref ResourceTag
+        - Key: Name
+          Value: VPC-ECS-3-tier-on-EC2
+
+  VPCSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties: 
+      GroupDescription: SecurityGroup applicatbale at the VPC
+      GroupName: VPCSecurityGroup
+      SecurityGroupIngress:
+      - IpProtocol: -1
+      # - IpProtocol: tcp
+        # FromPort: 80
+        # ToPort: 80
+        CidrIp: 0.0.0.0/0
+      SecurityGroupEgress: 
+      - IpProtocol: -1
+        FromPort: 0
+        ToPort: 65535
+        CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: resource-label
+          Value: !Ref ResourceTag
+        - Key: Name
+          Value: VPC-SG-ECS-3-tier-on-EC2
+      VpcId: !Ref VPC
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: resource-label
+          Value: !Ref ResourceTag
+        - Key: Name
+          Value: IG-ECS-3-tier-on-EC2
+
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref VPC
+
+
+#------------------------------------------------------------------------------
+# Tier 1 with two public subnets one in each of the two AZs
+#------------------------------------------------------------------------------
+  Tier1Subnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      CidrBlock: !Ref Tier1Subnet1CIDR
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: resource-label
+          Value: !Ref ResourceTag
+        - Key: Name
+          Value: Tier1-Public-Subnet1
+
+  Tier1Subnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [1, !GetAZs ""]
+      CidrBlock: !Ref Tier1Subnet2CIDR
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: resource-label
+          Value: !Ref ResourceTag
+        - Key: Name
+          Value: Tier1-Public-Subnet2
+  
+  Tier1NACL:
+    Type: AWS::EC2::NetworkAcl
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: resource-label
+          Value: !Ref ResourceTag
+        - Key: Name
+          Value: Tier1-NACL
+
+  InboundRule1:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      NetworkAclId:
+        Ref: Tier1NACL
+      RuleNumber: 100
+      Protocol: -1
+      RuleAction: allow
+      CidrBlock: 0.0.0.0/0
+
+  OutboundRule1:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      NetworkAclId:
+        Ref: Tier1NACL
+      RuleNumber: 100
+      Protocol: -1
+      Egress: true
+      RuleAction: allow
+      CidrBlock: 0.0.0.0/0
+
+  Tier1Subnet1NetworkAclAssociation:
+    Type: AWS::EC2::SubnetNetworkAclAssociation
+    Properties:
+      SubnetId:
+        Ref: Tier1Subnet1
+      NetworkAclId:
+        Ref: Tier1NACL
+
+  Tier1Subnet2NetworkAclAssociation:
+    Type: AWS::EC2::SubnetNetworkAclAssociation
+    Properties:
+      SubnetId:
+        Ref: Tier1Subnet2
+      NetworkAclId:
+        Ref: Tier1NACL
+
+  Tier1RouteTable:
+    Type: AWS::EC2::RouteTable
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: resource-label
+          Value: !Ref ResourceTag
+        - Key: Name
+          Value: Tier1-Route-Table
+
+  Tier1IgwRoute1:
+    Type: AWS::EC2::Route
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+      RouteTableId: !Ref Tier1RouteTable
+
+  Tier1Subnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    DependsOn: Tier1Subnet1
+    Properties:
+      RouteTableId: !Ref Tier1RouteTable
+      SubnetId: !Ref Tier1Subnet1
+
+  Tier1Subne21RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    DependsOn: Tier1Subnet2
+    Properties:
+      RouteTableId: !Ref Tier1RouteTable
+      SubnetId: !Ref Tier1Subnet2
+
+#------------------------------------------------------------------------------
+# Tier 1 NAT Gateways, 1 each AZ
+#------------------------------------------------------------------------------
+  Tier1EipSubnet1:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: VPC
+      Tags:
+        - Key: resource-label
+          Value: !Ref ResourceTag
+        - Key: Name
+          Value: Tier1-EIP-NATG1
+
+  Tier1EipSubnet2:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: VPC
+      Tags:
+        - Key: resource-label
+          Value: !Ref ResourceTag
+        - Key: Name
+          Value: Tier1-EIP-NATG2
+
+  Tier1NatGatewaySubnet1:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt Tier1EipSubnet1.AllocationId
+      SubnetId: !Ref Tier1Subnet1
+      Tags:
+        - Key: resource-label
+          Value: !Ref ResourceTag
+        - Key: Name
+          Value: NAT-Gateway-1
+
+  Tier1NatGatewaySubnet2:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt Tier1EipSubnet2.AllocationId
+      SubnetId: !Ref Tier1Subnet2
+      Tags:
+        - Key: resource-label
+          Value: !Ref ResourceTag
+        - Key: Name
+          Value: NAT-Gateway-2
+
+#------------------------------------------------------------------------------
+# Tier 2 with two private subnets one in each of the two AZs
+#------------------------------------------------------------------------------
+
+  Tier2Subnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      CidrBlock: !Ref Tier2Subnet1CIDR
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: resource-label
+          Value: !Ref ResourceTag
+        - Key: Name
+          Value: Tier2-Private-Subnet1
+
+  Tier2Subnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [1, !GetAZs ""]
+      CidrBlock: !Ref Tier2Subnet2CIDR
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: resource-label
+          Value: !Ref ResourceTag
+        - Key: Name
+          Value: Tier2-Private-Subnet2
+  
+  Tier2NACL:
+    Type: AWS::EC2::NetworkAcl
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+      Tags:
+        - Key: resource-label
+          Value: !Ref ResourceTag
+        - Key: Name
+          Value: Tier2-NACL
+  
+  InboundRule2:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      NetworkAclId:
+        Ref: Tier2NACL
+      RuleNumber: 100
+      Protocol: -1
+      RuleAction: allow
+      CidrBlock: 0.0.0.0/0
+
+
+  OutboundRule2:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      NetworkAclId:
+        Ref: Tier2NACL
+      RuleNumber: 100
+      Protocol: -1
+      Egress: true
+      RuleAction: allow
+      CidrBlock: 0.0.0.0/0
+
+  Tier2Subnet1NetworkAclAssociation:
+    Type: AWS::EC2::SubnetNetworkAclAssociation
+    Properties:
+      SubnetId:
+        Ref: Tier2Subnet1
+      NetworkAclId:
+        Ref: Tier2NACL
+
+  Tier2Subnet2NetworkAclAssociation:
+    Type: AWS::EC2::SubnetNetworkAclAssociation
+    Properties:
+      SubnetId:
+        Ref: Tier2Subnet2
+      NetworkAclId:
+        Ref: Tier2NACL
+
+  Tier2RouteTable1:
+    Type: AWS::EC2::RouteTable
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: resource-label
+          Value: !Ref ResourceTag
+        - Key: Name
+          Value: Tier2-Route-Table-1
+
+  Tier2RouteTable2:
+    Type: AWS::EC2::RouteTable
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: resource-label
+          Value: !Ref ResourceTag
+        - Key: Name
+          Value: Tier2-Route-Table2
+
+  Tier2NATRoute1:
+    Type: AWS::EC2::Route
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref Tier1NatGatewaySubnet1
+      RouteTableId: !Ref Tier2RouteTable1
+
+  Tier2NATRoute2:
+    Type: AWS::EC2::Route
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref Tier1NatGatewaySubnet2
+      RouteTableId: !Ref Tier2RouteTable2
+
+  Tier2Subnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    DependsOn: Tier2Subnet1
+    Properties:
+      RouteTableId: !Ref Tier2RouteTable1
+      SubnetId: !Ref Tier2Subnet1
+
+  Tier2Subne2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    DependsOn: Tier2Subnet2
+    Properties:
+      RouteTableId: !Ref Tier2RouteTable2
+      SubnetId: !Ref Tier2Subnet2
+
+
+
+#------------------------------------------------------------------------------
+# Tier 3 with two public subnets one in each of the two AZs
+#------------------------------------------------------------------------------
+
+  Tier3Subnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      CidrBlock: !Ref Tier3Subnet1CIDR
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: resource-label
+          Value: !Ref ResourceTag
+        - Key: Name
+          Value: Tier3-DB-Subnet1
+
+  Tier3Subnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [1, !GetAZs ""]
+      CidrBlock: !Ref Tier3Subnet2CIDR
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: resource-label
+          Value: !Ref ResourceTag
+        - Key: Name
+          Value: Tier3-DB-Subnet2
+  
+  Tier3NACL:
+    Type: AWS::EC2::NetworkAcl
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: resource-label
+          Value: !Ref ResourceTag
+        - Key: Name
+          Value: Tier3-DB-Subnet2
+  
+  InboundRule4:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      NetworkAclId:
+        Ref: Tier3NACL
+      RuleNumber: 100
+      Protocol: -1
+      RuleAction: allow
+      CidrBlock: 0.0.0.0/0
+
+
+  OutboundRule3:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      NetworkAclId:
+        Ref: Tier3NACL
+      RuleNumber: 100
+      Protocol: -1
+      Egress: true
+      RuleAction: allow
+      CidrBlock: 0.0.0.0/0
+
+  Tier3Subnet1NetworkAclAssociation:
+    Type: AWS::EC2::SubnetNetworkAclAssociation
+    Properties:
+      SubnetId:
+        Ref: Tier3Subnet1
+      NetworkAclId:
+        Ref: Tier3NACL
+
+  Tier3Subnet2NetworkAclAssociation:
+    Type: AWS::EC2::SubnetNetworkAclAssociation
+    Properties:
+      SubnetId:
+        Ref: Tier3Subnet2
+      NetworkAclId:
+        Ref: Tier3NACL
+
+
+#------------------------------------------------------------------------------
+# Use a bastion host in the public subnet 
+#------------------------------------------------------------------------------
+
+  Ec2Instance: 
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t2.micro
+      ## for ap-southeast-1
+      ImageId: ami-02f26adf094f51167
+      KeyName: 
+        Ref: ECSInstanceKeyPair
+      NetworkInterfaces: 
+        - AssociatePublicIpAddress: "true"
+          DeviceIndex: "0"
+          GroupSet: 
+            - Ref: VPCSecurityGroup
+          SubnetId: 
+            Ref: Tier1Subnet1
+      Tags:
+        - Key: resource-label
+          Value: !Ref ResourceTag
+        - Key: Name
+          Value: Bastion-host
+
+
+#------------------------------------------------------------------------------
+# Outputs 
+#------------------------------------------------------------------------------
+Outputs:
+  VPC:
+    Value: !Ref VPC
+  VPCSecurityGroup:
+    Value: !Ref VPCSecurityGroup
+  InternetGateway:
+    Value: !Ref InternetGateway
+  
+  Tier1Subnet1:
+    Value: !Ref Tier1Subnet1
+  Tier1Subnet1CIDR:
+    Value: !Ref Tier1Subnet1CIDR
+    Description: Tier 1 - Public subnet in AZ1
+  Tier1NatGatewaySubnet1:
+    Value: !Ref Tier1NatGatewaySubnet1
+  Tier1EipSubnet1:
+    Value: !Ref Tier1EipSubnet1
+    Description: EIP of the Nat Gateway in AZ1
+
+  Tier1Subnet2:
+    Value: !Ref Tier1Subnet2
+  Tier1Subnet2CIDR:
+    Value: !Ref Tier1Subnet2CIDR
+    Description: Tier 1 - Public subnet in AZ2
+  Tier1NatGatewaySubnet2:
+    Value: !Ref Tier1NatGatewaySubnet2
+  Tier1EipSubnet2:
+    Value: !Ref Tier1EipSubnet2
+    Description: EIP of the Nat Gateway in AZ2
+
+  Tier2Subnet1:
+    Value: !Ref Tier2Subnet1
+  Tier2Subnet1CIDR:
+    Value: !Ref Tier2Subnet1CIDR
+    Description: Tier 2 - Public subnet in AZ1
+
+  Tier2Subnet2:
+    Value: !Ref Tier2Subnet2
+  Tier2Subnet2CIDR:
+    Value: !Ref Tier2Subnet2CIDR
+    Description: Tier 2 - Public subnet in AZ2
+  
+  Tier3Subnet1:
+    Value: !Ref Tier3Subnet1
+  Tier3Subnet1CIDR:
+    Value: !Ref Tier3Subnet1CIDR
+    Description: Tier 3 - Public subnet in AZ1
+
+  Tier3Subnet2:
+    Value: !Ref Tier3Subnet2
+  Tier3Subnet2CIDR:
+    Value: !Ref Tier3Subnet2CIDR
+    Description: Tier 3 - Public subnet in AZ2

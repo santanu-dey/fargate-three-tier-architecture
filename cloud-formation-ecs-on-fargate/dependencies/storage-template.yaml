@@ -1,0 +1,190 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: >
+    Template for RDS Aurora DB & EFS 
+
+#------------------------------------------------------------------------------
+# Parameters
+#------------------------------------------------------------------------------
+
+Parameters:
+  
+  ResourceTag:
+    Description: This value will be used for tagging all resources in the stack
+    Type: String
+
+  WordPressDBUser:
+    Type: String
+
+  WordPressDBName:
+    Type: String
+
+  WordPressDBPassword:
+    Type: String
+    NoEcho: true
+  
+  VPC:
+    Description: Reference to the VPC
+    Type: String
+
+  Tier2Subnet1:
+    Description: Reference to Tier2 Subnet 1
+    Type: String
+  
+  Tier2Subnet2:
+    Description: Reference to Tier2 Subnet 2
+    Type: String
+
+  Tier3Subnet1:
+    Description: Reference to Tier3 Subnet 1
+    Type: String
+  
+  Tier3Subnet2:
+    Description: Reference to Tier3 Subnet 2
+    Type: String
+
+  Tier2Subnet1CIDR:
+    Description: CIDR block of Tier3 Subnet 1
+    Type: String
+
+  Tier2Subnet2CIDR:
+    Description: CIDR block of Tier3 Subnet 2
+    Type: String
+
+#------------------------------------------------------------------------------
+# Resournces
+#------------------------------------------------------------------------------
+
+Resources:
+
+  WPDatabaseSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: CloudFormation managed DB subnet group.
+      SubnetIds: 
+        - !Ref Tier3Subnet1
+        - !Ref Tier3Subnet2
+
+  WPDatabaseCluster:
+    Type: AWS::RDS::DBCluster
+    Properties:
+      Engine: aurora
+      EngineMode: serverless 
+      DatabaseName: !Ref WordPressDBName
+      MasterUsername: !Ref WordPressDBUser
+      MasterUserPassword: !Ref WordPressDBPassword 
+      BackupRetentionPeriod: 7
+      PreferredBackupWindow: 01:00-02:00
+      PreferredMaintenanceWindow: mon:03:00-mon:04:00
+      DBSubnetGroupName: !Ref WPDatabaseSubnetGroup
+      VpcSecurityGroupIds: 
+        - !Ref VPCSecurityGroupForWPDB
+      Tags:
+      - Key: resource-label
+        Value: !Ref ResourceTag
+      - Key: Name
+        Value: ECS3-tier-Aurora-Serverless-DB
+
+  VPCSecurityGroupForWPDB:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Database Security Group
+      VpcId: !Ref VPC
+      Tags:
+      - Key: resource-label
+        Value: !Ref ResourceTag
+      - Key: Name
+        Value: SG-ECSCluster-for-3tierApp
+
+  DBSecurityGroupHTTPinbound1:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref VPCSecurityGroupForWPDB
+      IpProtocol: tcp
+      FromPort: 3306
+      ToPort: 3306
+      CidrIp: !Ref Tier2Subnet1CIDR
+
+  DBSecurityGroupHTTPinbound2:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref VPCSecurityGroupForWPDB
+      IpProtocol: tcp
+      FromPort: 3306
+      ToPort: 3306
+      CidrIp: !Ref Tier2Subnet2CIDR
+  
+  EFSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId:
+        Ref: VPC
+      GroupDescription: Security group for mount target
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 2049
+        ToPort: 2049
+        CidrIp: !Ref Tier2Subnet1CIDR
+      - IpProtocol: tcp
+        FromPort: 2049
+        ToPort: 2049
+        CidrIp: !Ref Tier2Subnet2CIDR
+      Tags:
+      - Key: resource-label
+        Value: !Ref ResourceTag
+      - Key: Name
+        Value: SG-EFSFileSystem-for-3tierApp
+
+  WebServerFileSystem:
+    Type: AWS::EFS::FileSystem
+    Properties:
+      PerformanceMode: generalPurpose
+      FileSystemTags:
+      - Key: Name
+        Value: wpfiles
+      FileSystemTags:
+        - Key: resource-label
+          Value: !Ref ResourceTag
+        - Key: Name
+          Value: EFSFileSystem-for-3tierApp
+  
+  EFSMountTargetTier2Subnet1:
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId: !Ref WebServerFileSystem
+      SubnetId: !Ref Tier2Subnet1
+      SecurityGroups: 
+        - !Ref EFSSecurityGroup
+
+  EFSMountTargetTier2Subnet2:
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId: !Ref WebServerFileSystem
+      SubnetId: !Ref Tier2Subnet2
+      SecurityGroups: 
+        - !Ref EFSSecurityGroup
+
+
+
+#------------------------------------------------------------------------------
+# Outputs
+#------------------------------------------------------------------------------
+
+Outputs:
+
+  WordPressDBHost:
+    Value: !GetAtt WPDatabaseCluster.Endpoint.Address
+
+  EFSMountTargetTier2Subnet1:
+    Description: Mount target ID
+    Value: !Ref EFSMountTargetTier2Subnet1
+  
+  EFSMountTargetTier2Subnet2:
+    Description: Mount target ID
+    Value: !Ref EFSMountTargetTier2Subnet2
+
+  FileSystemID:
+    Description: File system ID
+    Value:
+      Ref: WebServerFileSystem
+ 

@@ -1,0 +1,349 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+Description: >
+    This template contains ECS elements
+
+#------------------------------------------------------------------------------
+# Paramenters
+#------------------------------------------------------------------------------
+
+Parameters:
+
+  ResourceTag:
+    Description: This value will be used for tagging all resources in the stack
+    Type: String
+    Default: ecs3tier
+  ECSClusterFor3tierApp:
+    Description: ECS Cluster Name
+    Type: String
+    Default: FargateClusterFor3tierApp
+  ECSServiceRole:
+    Description: IAM Role used for creating the ECS cluster
+    Type: String
+    Default: ECSServiceRoleName
+    # default be deleted
+  ECSInstanceKeyPair:
+    Description: Key pair to be used for SSH into the ECS instances
+    Type: String
+    Default: ECSInstanceKeyPair
+    # default be deleted
+  VPC:
+    Description: Reference to the VPC
+    Type: String
+    Default: vpc-06d68cb3783312d90
+    # default be deleted
+  VPCSecurityGroup:
+    Description: Reference to the default VPC SecurityGroup
+    Type: String 
+    Default: sg-0a459ea3f340f06b4
+    # default to be deleted
+  Tier1Subnet1:
+    Description: Reference to Tier1 Subnet 1
+    Type: String
+    Default: subnet-03daeaedda25a5cfd
+    # default be deleted
+  Tier1Subnet2:
+    Description: Reference to Tier1 Subnet 2
+    Type: String
+    Default: subnet-0d6d22466fc884cc6
+    # default be deleted
+  Tier2Subnet1:
+    Description: Reference to Tier2 Subnet 1
+    Type: String
+    Default: subnet-07418b47b45eca838
+    # default be deleted
+  Tier2Subnet2:
+    Description: Reference to Tier2 Subnet 2
+    Type: String
+    Default: subnet-0c72f7d0e53857224
+    # default be deleted
+  WordPressDBHost:
+    Description: Host address from RDS Aurora 
+    Type: String
+    Default: 'fargate-app-storage-17l4dljp3mo-wpdatabasecluster-rnhcs6wjsa5g.cluster-cdtmsfxao7ut.ap-southeast-1.rds.amazonaws.com'
+    # default be deleted
+  WordPressDBName:
+    Description: DB Name  WordPress DB
+    Type: String
+    Default: wpdb
+    # default be deleted
+  WordPressDBUser:
+    Description: User for WordPress DB 
+    Type: String
+    Default: wpuser
+    # default be deleted
+  WordPressDBPassword:
+    Description: User for WordPress DB 
+    Type: String
+    NoEcho: true
+    # default be deleted
+  FileSystemID:
+    Description: File system to be used with the tasks
+    Type: String
+    Default: fs-9610bdd6
+    # default be deleted
+
+#------------------------------------------------------------------------------
+# Resources
+#------------------------------------------------------------------------------
+
+Resources:
+
+#------------------------------------------------------------------------------
+# ECS Cluster scaling configurations 
+#------------------------------------------------------------------------------
+
+
+  # CapacityProvider1:
+  #   Type: "AWS::ECS::CapacityProvider"
+  #   DependsOn: AutoScalingGroup1
+  #   Properties:
+  #     AutoScalingGroupProvider:
+  #       AutoScalingGroupArn: !Ref AutoScalingGroup1
+  #       ManagedScaling:
+  #         Status: ENABLED
+  #       ManagedTerminationProtection: DISABLED
+  
+  # CapacityProvider2:
+  #   Type: "AWS::ECS::CapacityProvider"
+  #   DependsOn: AutoScalingGroup2
+  #   Properties:
+  #     AutoScalingGroupProvider:
+  #       AutoScalingGroupArn: !Ref AutoScalingGroup2
+  #       ManagedScaling:
+  #         Status: ENABLED
+  #       ManagedTerminationProtection: DISABLED
+
+  ECSCluster:
+    Type: AWS::ECS::Cluster
+    Properties: 
+      ClusterName: !Ref ECSClusterFor3tierApp
+    #   ClusterSettings: 
+    #     - ClusterSettings
+    #   Configuration: 
+    #     ClusterConfiguration
+    #   DefaultCapacityProviderStrategy: 
+    #     - CapacityProviderStrategyItem
+      Tags:
+      - Key: resource-label
+        Value: !Ref ResourceTag
+      - Key: Name
+        Value: ECSCluster-for-3tierApp
+
+  ClusterCPAssociation:
+    Type: "AWS::ECS::ClusterCapacityProviderAssociations"
+    Properties:
+      Cluster: !Ref ECSCluster
+      CapacityProviders:
+        - FARGATE
+        - FARGATE_SPOT
+      DefaultCapacityProviderStrategy:
+        - CapacityProvider: FARGATE
+          Base: 4
+          Weight: 1
+        - CapacityProvider: FARGATE_SPOT
+          Base: 0
+          Weight: 1
+
+  EcsSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: ECS Security Group
+      VpcId: !Ref 'VPC'
+      Tags:
+      - Key: resource-label
+        Value: !Ref ResourceTag
+      - Key: Name
+        Value: SG-ECSCluster-for-3tierApp
+
+  EcsSecurityGroupHTTPinbound1:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref 'EcsSecurityGroup'
+      IpProtocol: tcp
+      FromPort: '80'
+      ToPort: '80'
+      CidrIp: 0.0.0.0/0
+  
+  CloudwatchLogsGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Join ['-', [ECSLogGroup, !Ref 'AWS::StackName']]
+      RetentionInDays: 14
+
+#------------------------------------------------------------------------------
+# Application Tasks & Service
+#------------------------------------------------------------------------------
+
+  ApplicationTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties: 
+      Family: !Ref ResourceTag
+      Cpu: 512
+      Memory: 1024
+      ContainerDefinitions: 
+      - Name: wordpress-app
+        Essential: true
+        Image: wordpress:5-php8.0
+        LogConfiguration:
+          LogDriver: awslogs
+          Options:
+            awslogs-group: !Ref CloudwatchLogsGroup
+            awslogs-region: !Ref 'AWS::Region'
+            awslogs-stream-prefix: !Join ['', [ !Ref ResourceTag, wordpress-app] ]
+        Environment:
+          - Name: WORDPRESS_DB_HOST
+            Value: !Sub ${WordPressDBHost}:3306
+          - Name: WORDPRESS_DB_NAME
+            Value: !Ref WordPressDBName
+          - Name: WORDPRESS_DB_PASSWORD
+            Value: !Ref WordPressDBPassword
+          - Name: WORDPRESS_DB_USER
+            Value: !Ref WordPressDBUser
+        MountPoints:
+        - ContainerPath: /var/www/html
+          SourceVolume: wordpress_data
+        PortMappings:
+        - ContainerPort: 80
+          HostPort: 80
+          Protocol: tcp
+      Volumes:
+      - Name: wordpress_data
+        EFSVolumeConfiguration:
+          FilesystemId: !Ref FileSystemID
+      ExecutionRoleArn: !Ref ECSServiceRole
+      NetworkMode: awsvpc
+      # PlacementConstraints: 
+      #   - Expression: !Sub '(attribute:ecs.subnet.id == ${Tier2Subnet1} ) || (attribute:ecs.subnet.id == ${Tier2Subnet2})'
+      #     Type: memberOf
+      RequiresCompatibilities: 
+        - FARGATE
+      Tags:
+      - Key: resource-label
+        Value: !Ref ResourceTag
+
+  WPService:
+    Type: AWS::ECS::Service
+    Properties:
+      ServiceName: WPService
+      Cluster: !Ref ECSCluster
+      TaskDefinition: !Ref ApplicationTaskDefinition
+      DesiredCount: 4
+      LoadBalancers:
+      - ContainerName: "wordpress-app"
+        ContainerPort: 80
+        TargetGroupArn: !Ref ECSTargetGroup
+      CapacityProviderStrategy:
+        - CapacityProvider: FARGATE
+          Base: 4
+          Weight: 1
+        - CapacityProvider: FARGATE_SPOT
+          Base: 0
+          Weight: 1
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          SecurityGroups: 
+            - !Ref EcsSecurityGroup
+          Subnets: 
+            - !Ref Tier2Subnet1
+            - !Ref Tier2Subnet2
+
+#------------------------------------------------------------------------------
+# ALB
+#------------------------------------------------------------------------------
+
+  ALBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: ECS Security Group
+      VpcId: !Ref 'VPC'
+      Tags:
+      - Key: resource-label
+        Value: !Ref ResourceTag
+      - Key: Name
+        Value: SG-for-ALB-3tierApp
+
+  ALBSecurityGroupHTTPinbound:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref 'ALBSecurityGroup'
+      IpProtocol: tcp
+      FromPort: '80'
+      ToPort: '80'
+      CidrIp: 0.0.0.0/0
+  CloudwatchLogsGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Join ['-', [ECSLogGroup, !Ref 'AWS::StackName']]
+      RetentionInDays: 14
+
+  ECSLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: LB-for-ecs3tierApp
+      Subnets: 
+        - !Ref Tier1Subnet1
+        - !Ref Tier2Subnet2
+      SecurityGroups:
+        - !Ref ALBSecurityGroup
+      Tags:
+      - Key: resource-label
+        Value: !Ref ResourceTag
+
+  ECSLoadBalancerListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref ECSLoadBalancer
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref ECSTargetGroup
+
+# Dynamic Target Group to range of host ports
+  ECSTargetGroup:
+    DependsOn: ECSLoadBalancer
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      VpcId: !Ref VPC
+      Port: 80
+      Protocol: HTTP
+      Matcher:
+        HttpCode: 200
+      HealthCheckIntervalSeconds: 50
+      HealthCheckPath: /wp-content/
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 20
+      HealthyThresholdCount: 2
+      TargetType: ip
+      TargetGroupAttributes:
+      - Key: stickiness.enabled
+        Value: true
+
+  ListenerRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      ListenerArn: !Ref ECSLoadBalancerListener
+      Priority: 1
+      Conditions:
+        - Field: path-pattern
+          Values:
+            - /
+      Actions:
+        - TargetGroupArn: !Ref ECSTargetGroup
+          Type: forward
+
+#------------------------------------------------------------------------------
+# Outputs
+#------------------------------------------------------------------------------
+
+
+Outputs:
+  ECSCluster:
+    Value: !Ref ECSCluster
+  ECSLoadBalancer:
+    Value: !GetAtt ECSLoadBalancer.DNSName
+  ECSServiceRole: 
+    Value: !Ref ECSServiceRole
+  CloudwatchLogsGroup:
+    Value: !Ref CloudwatchLogsGroup
