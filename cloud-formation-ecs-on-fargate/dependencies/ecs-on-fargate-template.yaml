@@ -101,7 +101,7 @@ Resources:
       - Key: resource-label
         Value: !Ref ResourceTag
       - Key: Name
-        Value: SG-ECSCluster-for-3-tierApp
+        Value: SG-ECSCluster-for-Fargate-3-tierApp
 
   EcsSecurityGroupHTTPinbound1:
     Type: AWS::EC2::SecurityGroupIngress
@@ -176,7 +176,7 @@ Resources:
       TaskDefinition: !Ref ApplicationTaskDefinition
       DesiredCount: 8
       LoadBalancers:
-      - ContainerName: wordpress-app
+      - ContainerName: wordpress-for-fargate-app
         ContainerPort: 80
         TargetGroupArn: !Ref ECSTargetGroup
       CapacityProviderStrategy:
@@ -207,7 +207,7 @@ Resources:
       - Key: resource-label
         Value: !Ref ResourceTag
       - Key: Name
-        Value: SG-for-ALB-3tierApp
+        Value: SG-for-ALB-Fargate-3-Tier-App
 
   ALBSecurityGroupHTTPinbound:
     Type: AWS::EC2::SecurityGroupIngress
