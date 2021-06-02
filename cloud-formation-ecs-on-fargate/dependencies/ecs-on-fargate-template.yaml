@@ -12,76 +12,49 @@ Parameters:
   ResourceTag:
     Description: This value will be used for tagging all resources in the stack
     Type: String
-    Default: ecs3tier
   ECSClusterFor3tierApp:
     Description: ECS Cluster Name
     Type: String
-    Default: FargateClusterFor3tierApp
   ECSServiceRole:
     Description: IAM Role used for creating the ECS cluster
     Type: String
-    Default: ECSServiceRoleName
-    # default be deleted
   ECSInstanceKeyPair:
     Description: Key pair to be used for SSH into the ECS instances
     Type: String
-    Default: ECSInstanceKeyPair
-    # default be deleted
   VPC:
     Description: Reference to the VPC
     Type: String
-    Default: vpc-06d68cb3783312d90
-    # default be deleted
   VPCSecurityGroup:
     Description: Reference to the default VPC SecurityGroup
     Type: String 
-    Default: sg-0a459ea3f340f06b4
-    # default to be deleted
   Tier1Subnet1:
     Description: Reference to Tier1 Subnet 1
     Type: String
-    Default: subnet-03daeaedda25a5cfd
-    # default be deleted
   Tier1Subnet2:
     Description: Reference to Tier1 Subnet 2
     Type: String
-    Default: subnet-0d6d22466fc884cc6
-    # default be deleted
   Tier2Subnet1:
     Description: Reference to Tier2 Subnet 1
     Type: String
-    Default: subnet-07418b47b45eca838
-    # default be deleted
   Tier2Subnet2:
     Description: Reference to Tier2 Subnet 2
     Type: String
-    Default: subnet-0c72f7d0e53857224
-    # default be deleted
   WordPressDBHost:
     Description: Host address from RDS Aurora 
     Type: String
-    Default: 'fargate-app-storage-17l4dljp3mo-wpdatabasecluster-rnhcs6wjsa5g.cluster-cdtmsfxao7ut.ap-southeast-1.rds.amazonaws.com'
-    # default be deleted
   WordPressDBName:
     Description: DB Name  WordPress DB
     Type: String
-    Default: wpdb
-    # default be deleted
   WordPressDBUser:
     Description: User for WordPress DB 
     Type: String
-    Default: wpuser
-    # default be deleted
   WordPressDBPassword:
     Description: User for WordPress DB 
     Type: String
     NoEcho: true
-    # default be deleted
   FileSystemID:
     Description: File system to be used with the tasks
     Type: String
-    Default: fs-9610bdd6
-    # default be deleted
 
 #------------------------------------------------------------------------------
 # Resources
@@ -90,48 +63,22 @@ Parameters:
 Resources:
 
 #------------------------------------------------------------------------------
-# ECS Cluster scaling configurations 
+# ECS Cluster & scaling configurations 
 #------------------------------------------------------------------------------
-
-
-  # CapacityProvider1:
-  #   Type: "AWS::ECS::CapacityProvider"
-  #   DependsOn: AutoScalingGroup1
-  #   Properties:
-  #     AutoScalingGroupProvider:
-  #       AutoScalingGroupArn: !Ref AutoScalingGroup1
-  #       ManagedScaling:
-  #         Status: ENABLED
-  #       ManagedTerminationProtection: DISABLED
-  
-  # CapacityProvider2:
-  #   Type: "AWS::ECS::CapacityProvider"
-  #   DependsOn: AutoScalingGroup2
-  #   Properties:
-  #     AutoScalingGroupProvider:
-  #       AutoScalingGroupArn: !Ref AutoScalingGroup2
-  #       ManagedScaling:
-  #         Status: ENABLED
-  #       ManagedTerminationProtection: DISABLED
 
   ECSCluster:
     Type: AWS::ECS::Cluster
     Properties: 
       ClusterName: !Ref ECSClusterFor3tierApp
-    #   ClusterSettings: 
-    #     - ClusterSettings
-    #   Configuration: 
-    #     ClusterConfiguration
-    #   DefaultCapacityProviderStrategy: 
-    #     - CapacityProviderStrategyItem
       Tags:
       - Key: resource-label
         Value: !Ref ResourceTag
       - Key: Name
-        Value: ECSCluster-for-3tierApp
+        Value: ECS-Cluster-for-Fargate-for-3tierApp
 
   ClusterCPAssociation:
-    Type: "AWS::ECS::ClusterCapacityProviderAssociations"
+    Type: AWS::ECS::ClusterCapacityProviderAssociations
+    DependsOn: ECSCluster
     Properties:
       Cluster: !Ref ECSCluster
       CapacityProviders:
@@ -149,20 +96,20 @@ Resources:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: ECS Security Group
-      VpcId: !Ref 'VPC'
+      VpcId: !Ref VPC
       Tags:
       - Key: resource-label
         Value: !Ref ResourceTag
       - Key: Name
-        Value: SG-ECSCluster-for-3tierApp
+        Value: SG-ECSCluster-for-3-tierApp
 
   EcsSecurityGroupHTTPinbound1:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
-      GroupId: !Ref 'EcsSecurityGroup'
+      GroupId: !Ref EcsSecurityGroup
       IpProtocol: tcp
-      FromPort: '80'
-      ToPort: '80'
+      FromPort: 80
+      ToPort: 80
       CidrIp: 0.0.0.0/0
   
   CloudwatchLogsGroup:
@@ -213,24 +160,23 @@ Resources:
           FilesystemId: !Ref FileSystemID
       ExecutionRoleArn: !Ref ECSServiceRole
       NetworkMode: awsvpc
-      # PlacementConstraints: 
-      #   - Expression: !Sub '(attribute:ecs.subnet.id == ${Tier2Subnet1} ) || (attribute:ecs.subnet.id == ${Tier2Subnet2})'
-      #     Type: memberOf
       RequiresCompatibilities: 
         - FARGATE
       Tags:
       - Key: resource-label
         Value: !Ref ResourceTag
+      - Key: Name
+        Value: Fargate-3-Tier-App
 
   WPService:
     Type: AWS::ECS::Service
     Properties:
-      ServiceName: WPService
+      ServiceName: WPService-For-Fargate-3-Tier-App
       Cluster: !Ref ECSCluster
       TaskDefinition: !Ref ApplicationTaskDefinition
-      DesiredCount: 4
+      DesiredCount: 8
       LoadBalancers:
-      - ContainerName: "wordpress-app"
+      - ContainerName: wordpress-app
         ContainerPort: 80
         TargetGroupArn: !Ref ECSTargetGroup
       CapacityProviderStrategy:
@@ -256,7 +202,7 @@ Resources:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: ECS Security Group
-      VpcId: !Ref 'VPC'
+      VpcId: !Ref VPC
       Tags:
       - Key: resource-label
         Value: !Ref ResourceTag
@@ -266,7 +212,7 @@ Resources:
   ALBSecurityGroupHTTPinbound:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
-      GroupId: !Ref 'ALBSecurityGroup'
+      GroupId: !Ref ALBSecurityGroup
       IpProtocol: tcp
       FromPort: '80'
       ToPort: '80'
@@ -280,7 +226,7 @@ Resources:
   ECSLoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
-      Name: LB-for-ecs3tierApp
+      Name: ALB-for-Fargate-3-Tier-App
       Subnets: 
         - !Ref Tier1Subnet1
         - !Ref Tier2Subnet2
@@ -306,6 +252,7 @@ Resources:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
       VpcId: !Ref VPC
+      Name: TargetGroup-Fargate-3-Tier-App
       Port: 80
       Protocol: HTTP
       Matcher:
@@ -319,6 +266,9 @@ Resources:
       TargetGroupAttributes:
       - Key: stickiness.enabled
         Value: true
+      Tags:
+      - Key: resource-label
+        Value: !Ref ResourceTag
 
   ListenerRule:
     Type: AWS::ElasticLoadBalancingV2::ListenerRule
@@ -336,7 +286,6 @@ Resources:
 #------------------------------------------------------------------------------
 # Outputs
 #------------------------------------------------------------------------------
-
 
 Outputs:
   ECSCluster:

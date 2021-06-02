@@ -41,6 +41,10 @@ Resources:
               - 'cloudwatch:DescribeAlarms'
               - 'cloudwatch:PutMetricAlarm'
             Resource: '*'
+      Tags:
+      - Key: resource-label
+        Value: !Ref ResourceTag
+
 Outputs:
   ECSServiceRole:
     Value: !Ref ECSServiceRole

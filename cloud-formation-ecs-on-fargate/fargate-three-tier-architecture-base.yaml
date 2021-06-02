@@ -3,7 +3,18 @@ AWSTemplateFormatVersion: 2010-09-09
 Description: >
     This template deploys a sample 3-tier application using Amazon ECS on Fargate
 
+
+#------------------------------------------------------------------------------
+# Parameters
+#------------------------------------------------------------------------------
+
 Parameters:
+
+  ResourceTag:
+    Description: This value will be used for tagging all resources in the stack
+    Type: String
+    Default: Fargate-3-Tier-App
+
   ResourceBucket:
     Type: String
     Description: S3 Bucket where the deployent dependent cloudformation resources are stored
@@ -11,7 +22,7 @@ Parameters:
   ECSClusterFor3tierApp:
     Description: ECS Cluster Name
     Type: String
-    Default: ECSClusterFor3tierApp
+    Default: FargateClusterFor3tierApp
 
   ECSInstanceKeyPair:
     Description: Key pair to be used for SSH into the bastion host
@@ -86,36 +97,30 @@ Parameters:
     AllowedPattern: "[a-zA-Z][a-zA-Z0-9]*"
     ConstraintDescription: must be between 1 to 16 alphanumeric characters.
     Description: The database admin account user name, between 1 to 16 alphanumeric characters.
-    MaxLength: '16'
-    MinLength: '1'
+    MaxLength: 16
+    MinLength: 1
     Type: String
-    Default: 'wpuser'
+    Default: wpuser
     #Delete the default values here
 
   WordPressDBName:
     AllowedPattern: "[a-zA-Z][a-zA-Z0-9]*"
     ConstraintDescription: must be between 1 to 16 alphanumeric characters.
     Description: The database admin account user name, between 1 to 16 alphanumeric characters.
-    MaxLength: '63'
-    MinLength: '1'
+    MaxLength: 63
+    MinLength: 1
     Type: String
-    Default: 'wpdb'
+    Default: wpdb
     #Delete the default values here
 
   WordPressDBPassword:
     AllowedPattern: "[a-zA-Z0-9]+"
     ConstraintDescription: must be between 8 to 41 alphanumeric characters.
     Description: The database admin account password, between 8 to 41 alphanumeric characters.
-    MaxLength: '41'
-    MinLength: '8'
-    NoEcho: 'true'
+    MaxLength: 41
+    MinLength: 8
+    NoEcho: true
     Type: String
-    #Delete the default values here
-
-  ResourceTag:
-    Description: This value will be used for tagging all resources in the stack
-    Type: String
-    Default: ecs3tier
 
 Metadata:
   AWS::CloudFormation::Interface:
@@ -133,6 +138,11 @@ Metadata:
         default: Wordpress Database Username
       DatabasePassword:
         default: Wordpress Database Password
+
+
+#------------------------------------------------------------------------------
+# Resources:  Nested stacks
+#------------------------------------------------------------------------------
 
 Resources:
 
@@ -204,63 +214,75 @@ Resources:
       - Key: resource-label
         Value: !Ref ResourceTag
 
-  # ECSCluster stack
-  # ECSCluster:
-  #   Type: AWS::CloudFormation::Stack
-  #   DeletionPolicy: Delete
-  #   Properties:
-  #     TemplateURL:  !Join ['', ['https://', !Ref 'ResourceBucket', '.s3.amazonaws.com', '/dependencies/ecs-on-ec2-template.yaml']]
-  #     Parameters: 
-  #       ResourceTag: !Ref ResourceTag
-  #       ECSClusterFor3tierApp: !Ref ECSClusterFor3tierApp
-  #       ECSServiceRole: 
-  #         Fn::GetAtt: 
-  #         - IAMRoles
-  #         - Outputs.ECSServiceRole
-  #       ECSInstanceKeyPair: !Ref ECSInstanceKeyPair
-  #       VPC: 
-  #         Fn::GetAtt:
-  #         - Networking
-  #         - Outputs.VPC
-  #       VPCSecurityGroup: 
-  #         Fn::GetAtt:
-  #         - Networking
-  #         - Outputs.VPCSecurityGroup
-  #       Tier1Subnet1:
-  #         Fn::GetAtt:  
-  #         - Networking
-  #         - Outputs.Tier1Subnet1
-  #       Tier1Subnet2: 
-  #         Fn::GetAtt:  
-  #         - Networking
-  #         - Outputs.Tier1Subnet2
-  #       Tier2Subnet1: 
-  #         Fn::GetAtt:
-  #         - Networking
-  #         - Outputs.Tier2Subnet1
-  #       Tier2Subnet2: 
-  #         Fn::GetAtt:
-  #         - Networking
-  #         - Outputs.Tier2Subnet2
-  #       WordPressDBHost:
-  #         Fn::GetAtt:
-  #         - Storage
-  #         - Outputs.WordPressDBHost
-  #       WordPressDBName: !Ref WordPressDBName
-  #       WordPressDBUser: !Ref WordPressDBUser
-  #       WordPressDBPassword: !Ref WordPressDBPassword
-  #       FileSystemID:
-  #         Fn::GetAtt:
-  #         - Storage
-  #         - Outputs.FileSystemID
-  #     Tags:
-  #     - Key: resource-label
-  #       Value: !Ref ResourceTag
+#  ECSCluster stack
+  ECSCluster:
+    Type: AWS::CloudFormation::Stack
+    DeletionPolicy: Delete
+    Properties:
+      TemplateURL:  !Join ['', ['https://', !Ref 'ResourceBucket', '.s3.amazonaws.com', '/dependencies/ecs-on-fargate-template.yaml']]
+      Parameters: 
+        ResourceTag: !Ref ResourceTag
+        ECSClusterFor3tierApp: !Ref ECSClusterFor3tierApp
+        ECSServiceRole: 
+          Fn::GetAtt: 
+          - IAMRoles
+          - Outputs.ECSServiceRole
+        ECSInstanceKeyPair: !Ref ECSInstanceKeyPair
+        VPC: 
+          Fn::GetAtt:
+          - Networking
+          - Outputs.VPC
+        VPCSecurityGroup: 
+          Fn::GetAtt:
+          - Networking
+          - Outputs.VPCSecurityGroup
+        Tier1Subnet1:
+          Fn::GetAtt:  
+          - Networking
+          - Outputs.Tier1Subnet1
+        Tier1Subnet2: 
+          Fn::GetAtt:  
+          - Networking
+          - Outputs.Tier1Subnet2
+        Tier2Subnet1: 
+          Fn::GetAtt:
+          - Networking
+          - Outputs.Tier2Subnet1
+        Tier2Subnet2: 
+          Fn::GetAtt:
+          - Networking
+          - Outputs.Tier2Subnet2
+        WordPressDBHost:
+          Fn::GetAtt:
+          - Storage
+          - Outputs.WordPressDBHost
+        WordPressDBName: !Ref WordPressDBName
+        WordPressDBUser: !Ref WordPressDBUser
+        WordPressDBPassword: !Ref WordPressDBPassword
+        FileSystemID:
+          Fn::GetAtt:
+          - Storage
+          - Outputs.FileSystemID
+      Tags:
+      - Key: resource-label
+        Value: !Ref ResourceTag
 
-# Outputs:
-#   ECSLoadBalancerEndPoint:
-#     Description: ALB Endpoint (http URL) to request the application. 
-#     Value:
-#       Fn::GetAtt:
-#         - ECSCluster
-#         - Outputs.ECSLoadBalancer
+# ------------------------------------------------------------------------------
+# Overall outputs from all stacks 
+# ------------------------------------------------------------------------------
+
+Outputs:
+
+  ALBEndPoint:
+    Description: ALB Endpoint (http URL) to request the application. 
+    Value:
+      Fn::GetAtt:
+        - ECSCluster
+        - Outputs.ECSLoadBalancer
+  
+  FargateCluster:
+    Description: ECS Cluster on Fargate
+    Value:
+      Fn::GetAtt:
+        - ECSCluster
+        - Outputs.ECSCluster

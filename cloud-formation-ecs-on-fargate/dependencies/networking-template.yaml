@@ -68,7 +68,7 @@ Resources:
         - Key: resource-label
           Value: !Ref ResourceTag
         - Key: Name
-          Value: VPC-ECS-3-tier-on-EC2
+          Value: VPC-for-Fargate-3-Tier-App
 
   VPCSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -90,7 +90,7 @@ Resources:
         - Key: resource-label
           Value: !Ref ResourceTag
         - Key: Name
-          Value: VPC-SG-ECS-3-tier-on-EC2
+          Value: SG-VPC-for-Fargate-3-Tier-App
       VpcId: !Ref VPC
 
   InternetGateway:
@@ -100,7 +100,7 @@ Resources:
         - Key: resource-label
           Value: !Ref ResourceTag
         - Key: Name
-          Value: IG-ECS-3-tier-on-EC2
+          Value: IG-VPC-for-Fargate-3-Tier-App
 
   InternetGatewayAttachment:
     Type: AWS::EC2::VPCGatewayAttachment
@@ -123,7 +123,7 @@ Resources:
         - Key: resource-label
           Value: !Ref ResourceTag
         - Key: Name
-          Value: Tier1-Public-Subnet1
+          Value: Tier1-Public-Subnet1-for-Fargate-3-Tier-App
 
   Tier1Subnet2:
     Type: AWS::EC2::Subnet
@@ -136,7 +136,7 @@ Resources:
         - Key: resource-label
           Value: !Ref ResourceTag
         - Key: Name
-          Value: Tier1-Public-Subnet2
+          Value: Tier1-Public-Subnet2-for-Fargate-3-Tier-App
   
   Tier1NACL:
     Type: AWS::EC2::NetworkAcl
@@ -146,7 +146,7 @@ Resources:
         - Key: resource-label
           Value: !Ref ResourceTag
         - Key: Name
-          Value: Tier1-NACL
+          Value: Tier1-NACL-for-Fargate-3-Tier-App
 
   InboundRule1:
     Type: AWS::EC2::NetworkAclEntry
@@ -194,7 +194,7 @@ Resources:
         - Key: resource-label
           Value: !Ref ResourceTag
         - Key: Name
-          Value: Tier1-Route-Table
+          Value: Tier1-Route-Table-for-Fargate-3-Tier-App
 
   Tier1IgwRoute1:
     Type: AWS::EC2::Route
@@ -228,7 +228,7 @@ Resources:
         - Key: resource-label
           Value: !Ref ResourceTag
         - Key: Name
-          Value: Tier1-EIP-NATG1
+          Value: Tier1-EIP-NATG1-for-Fargate-3-Tier-App
 
   Tier1EipSubnet2:
     Type: AWS::EC2::EIP
@@ -238,7 +238,7 @@ Resources:
         - Key: resource-label
           Value: !Ref ResourceTag
         - Key: Name
-          Value: Tier1-EIP-NATG2
+          Value: Tier1-EIP-NATG2-for-Fargate-3-Tier-App
 
   Tier1NatGatewaySubnet1:
     Type: AWS::EC2::NatGateway
@@ -249,7 +249,7 @@ Resources:
         - Key: resource-label
           Value: !Ref ResourceTag
         - Key: Name
-          Value: NAT-Gateway-1
+          Value: NAT-Gateway-1-for-Fargate-3-Tier-App
 
   Tier1NatGatewaySubnet2:
     Type: AWS::EC2::NatGateway
@@ -260,7 +260,7 @@ Resources:
         - Key: resource-label
           Value: !Ref ResourceTag
         - Key: Name
-          Value: NAT-Gateway-2
+          Value: NAT-Gateway-2-for-Fargate-3-Tier-App
 
 #------------------------------------------------------------------------------
 # Tier 2 with two private subnets one in each of the two AZs
@@ -277,7 +277,7 @@ Resources:
         - Key: resource-label
           Value: !Ref ResourceTag
         - Key: Name
-          Value: Tier2-Private-Subnet1
+          Value: Tier2-Private-Subnet1-for-Fargate-3-Tier-App
 
   Tier2Subnet2:
     Type: AWS::EC2::Subnet
@@ -290,7 +290,7 @@ Resources:
         - Key: resource-label
           Value: !Ref ResourceTag
         - Key: Name
-          Value: Tier2-Private-Subnet2
+          Value: Tier2-Private-Subnet2-for-Fargate-3-Tier-App
   
   Tier2NACL:
     Type: AWS::EC2::NetworkAcl
@@ -301,7 +301,7 @@ Resources:
         - Key: resource-label
           Value: !Ref ResourceTag
         - Key: Name
-          Value: Tier2-NACL
+          Value: Tier2-NACL-for-Fargate-3-Tier-App
   
   InboundRule2:
     Type: AWS::EC2::NetworkAclEntry
@@ -350,7 +350,7 @@ Resources:
         - Key: resource-label
           Value: !Ref ResourceTag
         - Key: Name
-          Value: Tier2-Route-Table-1
+          Value: Tier2-Route-Table-1-for-Fargate-3-Tier-App
 
   Tier2RouteTable2:
     Type: AWS::EC2::RouteTable
@@ -361,7 +361,7 @@ Resources:
         - Key: resource-label
           Value: !Ref ResourceTag
         - Key: Name
-          Value: Tier2-Route-Table2
+          Value: Tier2-Route-Table2-for-Fargate-3-Tier-App
 
   Tier2NATRoute1:
     Type: AWS::EC2::Route
@@ -408,7 +408,7 @@ Resources:
         - Key: resource-label
           Value: !Ref ResourceTag
         - Key: Name
-          Value: Tier3-DB-Subnet1
+          Value: Tier3-DB-Subnet1-for-Fargate-3-Tier-App
 
   Tier3Subnet2:
     Type: AWS::EC2::Subnet
@@ -421,7 +421,7 @@ Resources:
         - Key: resource-label
           Value: !Ref ResourceTag
         - Key: Name
-          Value: Tier3-DB-Subnet2
+          Value: Tier3-DB-Subnet2-for-Fargate-3-Tier-App
   
   Tier3NACL:
     Type: AWS::EC2::NetworkAcl
@@ -431,7 +431,7 @@ Resources:
         - Key: resource-label
           Value: !Ref ResourceTag
         - Key: Name
-          Value: Tier3-DB-Subnet2
+          Value: Tier3-DB-Subnet2-for-Fargate-3-Tier-App
   
   InboundRule4:
     Type: AWS::EC2::NetworkAclEntry
@@ -495,7 +495,7 @@ Resources:
         - Key: resource-label
           Value: !Ref ResourceTag
         - Key: Name
-          Value: Bastion-host
+          Value: Bastion-host-for-Fargate-3-Tier-App
 
 
 #------------------------------------------------------------------------------

@@ -83,7 +83,7 @@ Resources:
       - Key: resource-label
         Value: !Ref ResourceTag
       - Key: Name
-        Value: ECS3-tier-Aurora-Serverless-DB
+        Value: Aurora-Serverless-Cluster-for-Fargate-3-Tier-App
 
   VPCSecurityGroupForWPDB:
     Type: AWS::EC2::SecurityGroup
@@ -94,7 +94,7 @@ Resources:
       - Key: resource-label
         Value: !Ref ResourceTag
       - Key: Name
-        Value: SG-ECSCluster-for-3tierApp
+        Value: SG-DB-for-Fargate-3-Tier-App
 
   DBSecurityGroupHTTPinbound1:
     Type: AWS::EC2::SecurityGroupIngress
@@ -133,7 +133,7 @@ Resources:
       - Key: resource-label
         Value: !Ref ResourceTag
       - Key: Name
-        Value: SG-EFSFileSystem-for-3tierApp
+        Value: SG-EFSFileSystem-for-Fargate-3-Tier-App
 
   WebServerFileSystem:
     Type: AWS::EFS::FileSystem
@@ -146,7 +146,7 @@ Resources:
         - Key: resource-label
           Value: !Ref ResourceTag
         - Key: Name
-          Value: EFSFileSystem-for-3tierApp
+          Value: EFSFileSystem-for-Fargate-3-Tier-App
   
   EFSMountTargetTier2Subnet1:
     Type: AWS::EFS::MountTarget

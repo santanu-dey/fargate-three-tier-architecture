@@ -36,10 +36,6 @@ Then repeat the command without dry run
 aws s3 sync . s3://cloud-formation-template --exclude ".*" --profile bootcamp
 ```
 
-Make the dependent templates publicly readable 
-```
-aws s3api put-object-acl --bucket cloud-formation-template --key dependencies/networking-template.yaml --acl public-read --profile bootcamp
-```
 
 3. Now you can deploy the stack
 
@@ -77,9 +73,9 @@ aws cloudformation delete-stack --stack-name three-tier-app --profile bootcamp
 
 
 #TODO
-* make sure that the task name has a different naming for each cluster. 
-* fix quotes, comments and output section
-* naming of target group
+* naming of target group - tag
+* naming of aurora Db
+* change the tag name
 * encryption of storage and DB 
 * storing of secrets 
 * use route 53
