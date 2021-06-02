@@ -1,4 +1,4 @@
-#Deploying the solution in your own AWS account
+# Deploying the solution in your own AWS account
 Follow the steps below to deploy the sample templates. 
 1. Using command line interface, clone the git repo at https://github.com/santanu-dey/fargate-three-tier-architecture.git
 ```shell
@@ -58,14 +58,14 @@ aws cloudformation describe-stack-events --stack-name fargate-3-tier-stack \
 --profile <your_awscli_profile>
 ```
 
-#Clean-up 
+# Clean-up 
 Delete the stack 
 ```shell
 aws cloudformation delete-stack --stack-name fargate-3-tier-stack --profile <your_awscli_profile>
 ```
 
 
-#TODO
+# TODO
 * naming of target group - tag
 * naming of aurora Db
 * change the tag name
