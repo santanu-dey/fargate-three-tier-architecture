@@ -1,75 +1,68 @@
-# How to deploy this stack
-
-Run the following commands order to 
-
-
-1. validate each individual templates stack locally
-
+#Deploying the solution in your own AWS account
+Follow the steps below to deploy the sample templates. 
+1. Using command line interface, clone the git repo at https://github.com/santanu-dey/fargate-three-tier-architecture.git
+```shell
+git clone https://github.com/santanu-dey/fargate-three-tier-architecture.git
+``` 
+2. Then change directory to the source code folder
+```shell
+cd fargate-three-tier-architecture
 ```
-aws cloudformation validate-template \
---template-body file://ecs-three-tier-architecture-base.yaml \
---profile bootcamp
+3. Upload the template files to an S3 bucket in your account. First, create a target bucket in S3. You must choose a unique bucket name. 
+```shell
+aws s3 mb s3://<your_own_bucket_name> --profile <your_awscli_profile>
 ```
-
-the `--profile` parameter is used by aws cli to pick up correct configuration for the target AWS account I am using, from available preconfigured cli profiles. 
-
-
-2. upload the template files to S3
-
-Create a target bucket in S3. You must chose an unique bucket name. 
-
+The ¬--prrofile parameter is used by AWS CLI to pick up correct configuration for the target AWS account to use, from available list of preconfigured cli profiles. 
+Then sync the local templates to the target S3 bucket just created.
+You can try a dry run first to make sure unwanted local files are excluded. 
+```shell
+aws s3 sync --dryrun . s3://<your_own_bucket_name> --exclude ".*" --profile <your_awscli_profile>
 ```
-aws s3 mb s3://cloud-formation-template --profile bootcamp
+Then repeat the command without the dry run option.
+```shell
+aws s3 sync . s3://<your_own_bucket_name> --exclude ".*" --profile <your_awscli_profile>
 ```
-
-Sync the local templates to the target S3 bucket just created.
-
-You can try a dryrun first to make sure unwanted local files are excluded. 
-
+4. Now you can deploy the stack to the AWS account. 
+Replace <your_own_bucket_name> with your chosen bucket name, as earlier. Also replace <your_own_db_password> in the command below with a password of your own choice for the database.
+``` aws 
+cloudformation create-stack \
+--stack-name fargate-3-tier-stack \
+--template-url https://<your_own_bucket_name>.s3.amazonaws.com/ecs-three-tier-architecture-base.yaml  \
+--parameters ParameterKey=ResourceBucket,ParameterValue=<your_own_bucket_name> \
+ParameterKey=WordPressDBPassword,ParameterValue=<your_own_db_password> \
+--capabilities CAPABILITY_NAMED_IAM --profile <your_awscli_profile>
 ```
-aws s3 sync --dryrun . s3://cloud-formation-template --exclude ".*" --profile bootcamp
+If you wish to check the status the of the stack you can use this command. 
+```shell
+aws cloudformation describe-stacks --stack-name fargate-3-tier-stack \
+--profile <your_awscli_profile>
 ```
-
-Then repeat the command without dry run
-
+When you see a stack status of CREATE_COMPLETE, you should also see an output section like below from the command above.
+```shell
+Outputs:
+  - Description: ECS Cluster on Fargate
+    OutputKey: FargateCluster
+    OutputValue: FargateClusterFor3tierApp
+  - Description: ALB Endpoint (http URL) to request the application.
+    OutputKey: ALBEndPoint
+    OutputValue: ALB-for-Fargate-3-Tier-App-1989139838.ap-southeast-1.elb.amazonaws.com
 ```
-aws s3 sync . s3://cloud-formation-template --exclude ".*" --profile bootcamp
-```
+Please note down both the output values from the command output like above,
+| OutputKey	| OutputValue |
+| ALBEndPoint | This is the ALB Endpoint (http URL where the WordPress application will be accessible. |
+| FargateCluster | Name of the ECS Cluster on Fargate. |
 
-
-3. Now you can deploy the stack
-
-Either of the commands below should work
-
-```
-santadey@a483e7807e92 cloud-formation % aws cloudformation create-stack \
---stack-name three-tier-app \
---template-url https://cloud-formation-template.s3.amazonaws.com/fargate-three-tier-architecture-base.yaml  \
---parameters ParameterKey=ResourceBucket,ParameterValue=cloud-formation-template \
-ParameterKey=WordPressDBPassword,ParameterValue=yourpassword \
---capabilities CAPABILITY_NAMED_IAM --profile bootcamp
-```
-
-
-4. check the status of the stack
-
-```
-aws cloudformation describe-stacks --stack-name three-tier-app \
---profile bootcamp
-```
-
-Full list of events 
-```
-aws cloudformation describe-stack-events --stack-name three-tier-app \
---profile bootcamp
+For a full list of CloudFormation stack events please run
+```shell
+aws cloudformation describe-stack-events --stack-name fargate-3-tier-stack \
+--profile <your_awscli_profile>
 ```
 
-4. delete the stack 
-
+#Clean-up 
+Delete the stack 
+```shell
+aws cloudformation delete-stack --stack-name fargate-3-tier-stack --profile <your_awscli_profile>
 ```
-aws cloudformation delete-stack --stack-name three-tier-app --profile bootcamp
-```
-
 
 
 #TODO
