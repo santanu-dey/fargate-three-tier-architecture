@@ -83,7 +83,7 @@ Resources:
       - Key: resource-label
         Value: !Ref ResourceTag
       - Key: Name
-        Value: Aurora-Serverless-Cluster-for-Fargate-3-Tier-App
+        Value: Aurora-Serverless-DB-for-Fargate-3-Tier-App
 
   VPCSecurityGroupForWPDB:
     Type: AWS::EC2::SecurityGroup

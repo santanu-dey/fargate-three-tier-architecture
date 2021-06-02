@@ -3,12 +3,19 @@ AWSTemplateFormatVersion: 2010-09-09
 Description: >
     This template contains IAM elements needed for the whole stack
 
+#------------------------------------------------------------------------------
+# Parameters
+#------------------------------------------------------------------------------
+
 Parameters:
 
   ResourceTag:
     Description: This value will be used for tagging all resources in the stack
     Type: String
-    Default: ecs3tier
+
+#------------------------------------------------------------------------------
+# Resources
+#------------------------------------------------------------------------------
 
 Resources:
   ECSServiceRole:
@@ -45,8 +52,10 @@ Resources:
       - Key: resource-label
         Value: !Ref ResourceTag
 
+#------------------------------------------------------------------------------
+# Outputs
+#------------------------------------------------------------------------------
+
 Outputs:
   ECSServiceRole:
     Value: !Ref ECSServiceRole
-    # Export: 
-    #   Name: ECSServiceRoleForECS3TierStack

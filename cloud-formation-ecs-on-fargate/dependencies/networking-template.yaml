@@ -431,7 +431,7 @@ Resources:
         - Key: resource-label
           Value: !Ref ResourceTag
         - Key: Name
-          Value: Tier3-DB-Subnet2-for-Fargate-3-Tier-App
+          Value: Tier3-NACL-for-Fargate-3-Tier-App
   
   InboundRule4:
     Type: AWS::EC2::NetworkAclEntry
@@ -495,7 +495,7 @@ Resources:
         - Key: resource-label
           Value: !Ref ResourceTag
         - Key: Name
-          Value: Bastion-host-for-Fargate-3-Tier-App
+          Value: Bastion-Host-for-Fargate-3-Tier-App
 
 
 #------------------------------------------------------------------------------

@@ -74,7 +74,7 @@ Resources:
       - Key: resource-label
         Value: !Ref ResourceTag
       - Key: Name
-        Value: ECS-Cluster-for-Fargate-for-3tierApp
+        Value: ECS-Cluster-for-Fargate-3-Tier-App
 
   ClusterCPAssociation:
     Type: AWS::ECS::ClusterCapacityProviderAssociations
@@ -129,7 +129,7 @@ Resources:
       Cpu: 512
       Memory: 1024
       ContainerDefinitions: 
-      - Name: wordpress-app
+      - Name: wordpress-for-fargate-app
         Essential: true
         Image: wordpress:5-php8.0
         LogConfiguration:
@@ -166,7 +166,7 @@ Resources:
       - Key: resource-label
         Value: !Ref ResourceTag
       - Key: Name
-        Value: Fargate-3-Tier-App
+        Value: Task-For-Fargate-3-Tier-App
 
   WPService:
     Type: AWS::ECS::Service
