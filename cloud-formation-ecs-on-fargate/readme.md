@@ -27,7 +27,7 @@ Replace <your_own_bucket_name> with your chosen bucket name, as earlier. Also re
 ``` aws 
 cloudformation create-stack \
 --stack-name fargate-3-tier-stack \
---template-url https://<your_own_bucket_name>.s3.amazonaws.com/ecs-three-tier-architecture-base.yaml  \
+--template-url https://<your_own_bucket_name>.s3.amazonaws.com/fargate-three-tier-architecture-base.yaml  \
 --parameters ParameterKey=ResourceBucket,ParameterValue=<your_own_bucket_name> \
 ParameterKey=WordPressDBPassword,ParameterValue=<your_own_db_password> \
 --capabilities CAPABILITY_NAMED_IAM --profile <your_awscli_profile>
